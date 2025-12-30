@@ -17,8 +17,6 @@ import {
   TrendingUp,
   Copy,
   Filter,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,18 +39,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
   useCustomDashboardStore,
   WIDGET_TEMPLATES,
   type DashboardWidget,
   type WidgetType,
 } from '@/lib/stores/custom-dashboard-store';
 import { QueryBuilder, QuerySummary } from '@/components/dashboard/QueryBuilder';
-import { executeQuery, createEmptyGroup } from '@/lib/query-builder';
+import { executeQuery, createEmptyGroup, type QueryGroup } from '@/lib/query-builder';
 import { cn } from '@/lib/utils';
 import type { Personnel, PersonnelStats } from '@/types/personnel';
 
@@ -92,6 +85,7 @@ const WIDGET_ICONS: Record<WidgetType, typeof LayoutGrid> = {
   'line-chart': Activity,
   'data-table': Table,
   'recent-activity': Activity,
+  'filter': Filter,
 };
 
 // Widget renderer component
@@ -101,12 +95,16 @@ function DashboardWidgetRenderer({
   stats,
   isEditing,
   onRemove,
+  onQueryChange,
+  totalCount,
 }: {
   widget: DashboardWidget;
   data: Personnel[];
   stats: PersonnelStats | null;
   isEditing: boolean;
   onRemove: () => void;
+  onQueryChange?: (query: QueryGroup) => void;
+  totalCount?: number;
 }) {
   const sizeClasses: Record<string, string> = {
     small: 'col-span-1',
@@ -250,6 +248,41 @@ function DashboardWidgetRenderer({
         );
       }
 
+      case 'filter': {
+        const query = widget.config.query || createEmptyGroup();
+        const conditionCount = query.conditions.length +
+          (query.groups?.reduce((sum, g) => sum + g.conditions.length, 0) || 0);
+
+        return (
+          <div className="space-y-4">
+            {conditionCount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Showing <span className="font-medium text-foreground">{data.length}</span> of{' '}
+                  <span className="font-medium text-foreground">{totalCount || data.length}</span> personnel
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onQueryChange?.(createEmptyGroup())}
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            )}
+            <QueryBuilder
+              query={query}
+              onChange={(newQuery) => onQueryChange?.(newQuery)}
+            />
+            {conditionCount > 0 && (
+              <div className="pt-2 border-t">
+                <QuerySummary query={query} />
+              </div>
+            )}
+          </div>
+        );
+      }
+
       default:
         return <p className="text-muted-foreground">Unknown widget type</p>;
     }
@@ -305,7 +338,7 @@ export function CustomDashboardSection({
     setIsEditing,
     addWidget,
     removeWidget,
-    updateDashboardQuery,
+    updateWidget,
   } = useCustomDashboardStore();
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -314,15 +347,18 @@ export function CustomDashboardSection({
   const [newDashboardDescription, setNewDashboardDescription] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
-  const [filterOpen, setFilterOpen] = useState(false);
 
   const activeDashboard = dashboards.find((d) => d.id === activeDashboardId);
 
-  // Apply query filters to data
+  // Find filter widget and get its query
+  const filterWidget = activeDashboard?.widgets.find(w => w.type === 'filter');
+  const activeQuery = filterWidget?.config.query;
+
+  // Apply query filters from filter widget to data
   const filteredData = useMemo(() => {
-    if (!activeDashboard?.query) return data;
-    return executeQuery(data, activeDashboard.query);
-  }, [data, activeDashboard?.query]);
+    if (!activeQuery) return data;
+    return executeQuery(data, activeQuery);
+  }, [data, activeQuery]);
 
   // Calculate filtered stats
   const filteredStats = useMemo((): PersonnelStats | null => {
@@ -345,8 +381,12 @@ export function CustomDashboardSection({
     };
   }, [filteredData]);
 
-  const queryConditionCount = (activeDashboard?.query?.conditions.length || 0) +
-    (activeDashboard?.query?.groups?.reduce((sum, g) => sum + g.conditions.length, 0) || 0);
+  // Handler for updating filter widget query
+  const handleFilterQueryChange = (widgetId: string, query: QueryGroup) => {
+    if (activeDashboardId) {
+      updateWidget(activeDashboardId, widgetId, { config: { query } });
+    }
+  };
 
   const handleCreateDashboard = () => {
     if (newDashboardName.trim()) {
@@ -621,64 +661,6 @@ export function CustomDashboardSection({
         </div>
       </motion.div>
 
-      {/* Query Filter Section */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="space-y-2"
-      >
-        <Collapsible open={filterOpen} onOpenChange={setFilterOpen}>
-          <div className="flex items-center justify-between">
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Filters
-                {queryConditionCount > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {queryConditionCount}
-                  </Badge>
-                )}
-                {filterOpen ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            {queryConditionCount > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Showing {filteredData.length} of {data.length} personnel
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => updateDashboardQuery(activeDashboard.id, createEmptyGroup())}
-                >
-                  Clear Filters
-                </Button>
-              </div>
-            )}
-          </div>
-          <CollapsibleContent className="pt-4">
-            <Card>
-              <CardContent className="pt-4">
-                <QueryBuilder
-                  query={activeDashboard.query || createEmptyGroup()}
-                  onChange={(query) => updateDashboardQuery(activeDashboard.id, query)}
-                />
-              </CardContent>
-            </Card>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {!filterOpen && queryConditionCount > 0 && (
-          <div className="flex items-center gap-2">
-            <QuerySummary query={activeDashboard.query || createEmptyGroup()} />
-          </div>
-        )}
-      </motion.div>
-
       {/* Widgets Grid */}
       {activeDashboard.widgets.length === 0 ? (
         <motion.div
@@ -713,6 +695,8 @@ export function CustomDashboardSection({
                 stats={filteredStats}
                 isEditing={isEditing}
                 onRemove={() => removeWidget(activeDashboard.id, widget.id)}
+                onQueryChange={widget.type === 'filter' ? (query) => handleFilterQueryChange(widget.id, query) : undefined}
+                totalCount={data.length}
               />
             ))}
           </AnimatePresence>

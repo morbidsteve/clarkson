@@ -8,7 +8,8 @@ export type WidgetType =
   | 'bar-chart'
   | 'line-chart'
   | 'data-table'
-  | 'recent-activity';
+  | 'recent-activity'
+  | 'filter';
 
 export type WidgetSize = 'small' | 'medium' | 'large' | 'full';
 
@@ -26,6 +27,8 @@ export interface DashboardWidget {
     // Table config
     columns?: string[];
     limit?: number;
+    // Filter widget config
+    query?: QueryGroup;
   };
 }
 
@@ -126,6 +129,14 @@ export const WIDGET_TEMPLATES: Record<string, Omit<DashboardWidget, 'id'>> = {
     title: 'Recent Activity',
     size: 'medium',
     config: {},
+  },
+  'filter': {
+    type: 'filter',
+    title: 'Data Filter',
+    size: 'full',
+    config: {
+      query: createEmptyGroup(),
+    },
   },
 };
 
