@@ -421,6 +421,10 @@ export function CustomDashboardSection({
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
 
+  // Filter widget configuration state
+  const [configuringFilter, setConfiguringFilter] = useState(false);
+  const [pendingFilterQuery, setPendingFilterQuery] = useState<QueryGroup>(createEmptyGroup());
+
   const activeDashboard = dashboards.find((d) => d.id === activeDashboardId);
 
   // Find filter widget and get its query
@@ -473,10 +477,35 @@ export function CustomDashboardSection({
   const handleAddWidget = (templateKey: string) => {
     if (!activeDashboardId) return;
     const template = WIDGET_TEMPLATES[templateKey];
-    if (template) {
-      addWidget(activeDashboardId, template);
+    if (!template) return;
+
+    // For filter widget, show configuration first
+    if (template.type === 'filter') {
+      setPendingFilterQuery(createEmptyGroup());
+      setConfiguringFilter(true);
+      return;
     }
+
+    addWidget(activeDashboardId, template);
     setAddWidgetDialogOpen(false);
+  };
+
+  const handleAddFilterWidget = () => {
+    if (!activeDashboardId) return;
+    addWidget(activeDashboardId, {
+      type: 'filter',
+      title: 'Data Filter',
+      size: 'full',
+      config: { query: pendingFilterQuery },
+    });
+    setConfiguringFilter(false);
+    setPendingFilterQuery(createEmptyGroup());
+    setAddWidgetDialogOpen(false);
+  };
+
+  const handleCancelFilterConfig = () => {
+    setConfiguringFilter(false);
+    setPendingFilterQuery(createEmptyGroup());
   };
 
   const handleSaveName = () => {
@@ -777,38 +806,78 @@ export function CustomDashboardSection({
       )}
 
       {/* Add Widget Dialog */}
-      <Dialog open={addWidgetDialogOpen} onOpenChange={setAddWidgetDialogOpen}>
+      <Dialog open={addWidgetDialogOpen} onOpenChange={(open) => {
+        setAddWidgetDialogOpen(open);
+        if (!open) {
+          setConfiguringFilter(false);
+          setPendingFilterQuery(createEmptyGroup());
+        }
+      }}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Add Widget</DialogTitle>
-            <DialogDescription>
-              Choose a widget to add to your dashboard.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 py-4 max-h-96 overflow-auto">
-            {Object.entries(WIDGET_TEMPLATES).map(([key, template]) => {
-              const Icon = WIDGET_ICONS[template.type];
-              return (
-                <Card
-                  key={key}
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => handleAddWidget(key)}
-                >
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{template.title}</p>
-                      <p className="text-xs text-muted-foreground capitalize">
-                        {template.type.replace('-', ' ')} - {template.size}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+          {configuringFilter ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Configure Data Filter</DialogTitle>
+                <DialogDescription>
+                  Build your filter query, then add it to your dashboard.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4 max-h-[60vh] overflow-auto">
+                <QueryBuilder
+                  query={pendingFilterQuery}
+                  onChange={setPendingFilterQuery}
+                />
+                {pendingFilterQuery.conditions.length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground mb-2">Filter Summary:</p>
+                    <QuerySummary query={pendingFilterQuery} />
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={handleCancelFilterConfig}>
+                  Back
+                </Button>
+                <Button onClick={handleAddFilterWidget} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add to Dashboard
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Add Widget</DialogTitle>
+                <DialogDescription>
+                  Choose a widget to add to your dashboard.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-3 py-4 max-h-96 overflow-auto">
+                {Object.entries(WIDGET_TEMPLATES).map(([key, template]) => {
+                  const Icon = WIDGET_ICONS[template.type];
+                  return (
+                    <Card
+                      key={key}
+                      className="cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => handleAddWidget(key)}
+                    >
+                      <CardContent className="flex items-center gap-3 p-4">
+                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{template.title}</p>
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {template.type.replace('-', ' ')} - {template.size}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
