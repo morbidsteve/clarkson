@@ -885,7 +885,7 @@ export function CustomDashboardSection({
             cols={{ lg: 12, md: 8, sm: 4 }}
             rowHeight={60}
             dragConfig={{ enabled: isEditing, handle: '.drag-handle', bounded: false, threshold: 3 }}
-            resizeConfig={{ enabled: isEditing }}
+            resizeConfig={{ enabled: isEditing, handles: ['s', 'e', 'se'] }}
             onLayoutChange={handleLayoutChange}
             margin={[16, 16]}
           >
@@ -908,13 +908,14 @@ export function CustomDashboardSection({
                 );
               }
 
-              // Render other widgets normally
+              // Render other widgets normally - use original data, not filteredData
+              // filteredData is only relevant when there's a filter widget active
               return (
                 <div key={widget.id} className="h-full">
                   <DashboardWidgetRenderer
                     widget={widget}
-                    data={filteredData}
-                    stats={filteredStats}
+                    data={data}
+                    stats={stats}
                     isEditing={isEditing}
                     onRemove={() => removeWidget(activeDashboard.id, widget.id)}
                   />
