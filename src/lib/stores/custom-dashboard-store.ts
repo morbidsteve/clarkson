@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { type QueryGroup, createEmptyGroup } from '@/lib/query-builder';
 
 export type WidgetType =
   | 'stat-card'
@@ -33,6 +34,7 @@ export interface CustomDashboard {
   name: string;
   description?: string;
   widgets: DashboardWidget[];
+  query: QueryGroup; // Filter query for this dashboard
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +51,9 @@ interface CustomDashboardStore {
   duplicateDashboard: (id: string) => string;
   setActiveDashboard: (id: string | null) => void;
   setIsEditing: (editing: boolean) => void;
+
+  // Query actions
+  updateDashboardQuery: (dashboardId: string, query: QueryGroup) => void;
 
   // Widget actions
   addWidget: (dashboardId: string, widget: Omit<DashboardWidget, 'id'>) => void;
@@ -143,6 +148,7 @@ export const useCustomDashboardStore = create<CustomDashboardStore>()(
               name,
               description,
               widgets: [],
+              query: createEmptyGroup(),
               createdAt: now,
               updatedAt: now,
             },
@@ -179,6 +185,14 @@ export const useCustomDashboardStore = create<CustomDashboardStore>()(
         const newId = crypto.randomUUID();
         const now = new Date().toISOString();
 
+        // Deep copy the query
+        const copyQuery = (group: QueryGroup): QueryGroup => ({
+          ...group,
+          id: crypto.randomUUID(),
+          conditions: group.conditions.map(c => ({ ...c, id: crypto.randomUUID() })),
+          groups: group.groups?.map(copyQuery),
+        });
+
         set((state) => ({
           dashboards: [
             ...state.dashboards,
@@ -190,6 +204,7 @@ export const useCustomDashboardStore = create<CustomDashboardStore>()(
                 ...w,
                 id: crypto.randomUUID(),
               })),
+              query: dashboard.query ? copyQuery(dashboard.query) : createEmptyGroup(),
               createdAt: now,
               updatedAt: now,
             },
@@ -205,6 +220,16 @@ export const useCustomDashboardStore = create<CustomDashboardStore>()(
 
       setIsEditing: (editing) => {
         set({ isEditing: editing });
+      },
+
+      updateDashboardQuery: (dashboardId, query) => {
+        set((state) => ({
+          dashboards: state.dashboards.map((d) =>
+            d.id === dashboardId
+              ? { ...d, query, updatedAt: new Date().toISOString() }
+              : d
+          ),
+        }));
       },
 
       addWidget: (dashboardId, widget) => {

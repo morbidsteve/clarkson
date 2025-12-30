@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -16,6 +16,9 @@ import {
   Activity,
   TrendingUp,
   Copy,
+  Filter,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,11 +41,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   useCustomDashboardStore,
   WIDGET_TEMPLATES,
   type DashboardWidget,
   type WidgetType,
 } from '@/lib/stores/custom-dashboard-store';
+import { QueryBuilder, QuerySummary } from '@/components/dashboard/QueryBuilder';
+import { executeQuery, createEmptyGroup } from '@/lib/query-builder';
 import { cn } from '@/lib/utils';
 import type { Personnel, PersonnelStats } from '@/types/personnel';
 
@@ -295,6 +305,7 @@ export function CustomDashboardSection({
     setIsEditing,
     addWidget,
     removeWidget,
+    updateDashboardQuery,
   } = useCustomDashboardStore();
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -303,8 +314,39 @@ export function CustomDashboardSection({
   const [newDashboardDescription, setNewDashboardDescription] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const activeDashboard = dashboards.find((d) => d.id === activeDashboardId);
+
+  // Apply query filters to data
+  const filteredData = useMemo(() => {
+    if (!activeDashboard?.query) return data;
+    return executeQuery(data, activeDashboard.query);
+  }, [data, activeDashboard?.query]);
+
+  // Calculate filtered stats
+  const filteredStats = useMemo((): PersonnelStats | null => {
+    if (!filteredData.length) return null;
+
+    const deploymentReady = filteredData.filter(p => p.deploymentEligible).length;
+    const medicalGreen = filteredData.filter(p => p.medicalReadiness === 'Green').length;
+    const totalYears = filteredData.reduce((sum, p) => sum + (p.yearsOfService || 0), 0);
+
+    return {
+      total: filteredData.length,
+      deploymentReady,
+      deploymentReadyPercent: Math.round((deploymentReady / filteredData.length) * 100),
+      medicalGreen,
+      medicalGreenPercent: Math.round((medicalGreen / filteredData.length) * 100),
+      avgYearsOfService: (totalYears / filteredData.length).toFixed(1),
+      branchDistribution: [],
+      clearanceDistribution: [],
+      readinessDistribution: [],
+    };
+  }, [filteredData]);
+
+  const queryConditionCount = (activeDashboard?.query?.conditions.length || 0) +
+    (activeDashboard?.query?.groups?.reduce((sum, g) => sum + g.conditions.length, 0) || 0);
 
   const handleCreateDashboard = () => {
     if (newDashboardName.trim()) {
@@ -579,6 +621,64 @@ export function CustomDashboardSection({
         </div>
       </motion.div>
 
+      {/* Query Filter Section */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="space-y-2"
+      >
+        <Collapsible open={filterOpen} onOpenChange={setFilterOpen}>
+          <div className="flex items-center justify-between">
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Filter className="h-4 w-4" />
+                Filters
+                {queryConditionCount > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {queryConditionCount}
+                  </Badge>
+                )}
+                {filterOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            {queryConditionCount > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Showing {filteredData.length} of {data.length} personnel
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => updateDashboardQuery(activeDashboard.id, createEmptyGroup())}
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            )}
+          </div>
+          <CollapsibleContent className="pt-4">
+            <Card>
+              <CardContent className="pt-4">
+                <QueryBuilder
+                  query={activeDashboard.query || createEmptyGroup()}
+                  onChange={(query) => updateDashboardQuery(activeDashboard.id, query)}
+                />
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {!filterOpen && queryConditionCount > 0 && (
+          <div className="flex items-center gap-2">
+            <QuerySummary query={activeDashboard.query || createEmptyGroup()} />
+          </div>
+        )}
+      </motion.div>
+
       {/* Widgets Grid */}
       {activeDashboard.widgets.length === 0 ? (
         <motion.div
@@ -609,8 +709,8 @@ export function CustomDashboardSection({
               <DashboardWidgetRenderer
                 key={widget.id}
                 widget={widget}
-                data={data}
-                stats={stats}
+                data={filteredData}
+                stats={filteredStats}
                 isEditing={isEditing}
                 onRemove={() => removeWidget(activeDashboard.id, widget.id)}
               />
