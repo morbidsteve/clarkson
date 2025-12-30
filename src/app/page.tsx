@@ -12,6 +12,7 @@ import { SecuritySection } from '@/components/sections/SecuritySection';
 import { ReadinessSection } from '@/components/sections/ReadinessSection';
 import { TrainingSection } from '@/components/sections/TrainingSection';
 import { MedicalSection } from '@/components/sections/MedicalSection';
+import { CustomDashboardSection } from '@/components/sections/CustomDashboardSection';
 
 // Personnel Section Components
 import { StatsCards } from '@/components/dashboard/StatsCards';
@@ -108,6 +109,8 @@ export default function Home() {
         return <TrainingSection data={data?.data || []} stats={data?.stats ?? null} isLoading={isLoading} />;
       case 'medical':
         return <MedicalSection data={data?.data || []} stats={data?.stats ?? null} isLoading={isLoading} />;
+      case 'custom-dashboards':
+        return <CustomDashboardSection data={data?.data || []} stats={data?.stats ?? null} isLoading={isLoading} />;
       default:
         return <DashboardSection stats={data?.stats ?? null} isLoading={isLoading} />;
     }

@@ -15,6 +15,8 @@ import {
   Building2,
   Bookmark,
   Trash2,
+  LayoutGrid,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useDashboardStore, QUICK_VIEWS } from '@/lib/stores/dashboard-store';
 import { useNavigationStore, type NavSection } from '@/lib/stores/navigation-store';
+import { useCustomDashboardStore } from '@/lib/stores/custom-dashboard-store';
 
 const navItems: { icon: typeof LayoutDashboard; label: string; section: NavSection }[] = [
   { icon: LayoutDashboard, label: 'Dashboard', section: 'dashboard' },
@@ -37,9 +40,11 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { savedViews, activeViewId, loadView, deleteView, setVisibleColumns, resetToDefault } = useDashboardStore();
   const { activeSection, setActiveSection } = useNavigationStore();
+  const { dashboards, setActiveDashboard } = useCustomDashboardStore();
 
-  const handleQuickView = (columns: string[]) => {
+  const handleQuickView = (key: string, columns: string[]) => {
     setVisibleColumns(columns);
+    setActiveSection('personnel'); // Navigate to Personnel section to see the view
   };
 
   return (
@@ -131,7 +136,7 @@ export function Sidebar() {
                       variant="ghost"
                       size="sm"
                       className="w-full justify-start text-sm"
-                      onClick={() => handleQuickView(view.columns)}
+                      onClick={() => handleQuickView(key, view.columns)}
                     >
                       {view.name}
                     </Button>
@@ -164,7 +169,10 @@ export function Sidebar() {
                       >
                         <button
                           className="flex items-center gap-2 flex-1 text-left text-sm"
-                          onClick={() => loadView(view.id)}
+                          onClick={() => {
+                            loadView(view.id);
+                            setActiveSection('personnel');
+                          }}
                         >
                           <Bookmark className="h-4 w-4 text-primary" />
                           <span className="truncate">{view.name}</span>
@@ -182,6 +190,44 @@ export function Sidebar() {
                   </div>
                 </div>
               )}
+
+              <Separator className="my-4" />
+
+              {/* Custom Dashboards */}
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
+                  My Dashboards
+                </h3>
+                <div className="space-y-1">
+                  {dashboards.map((dashboard) => (
+                    <Button
+                      key={dashboard.id}
+                      variant={activeSection === 'custom-dashboards' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="w-full justify-start text-sm"
+                      onClick={() => {
+                        setActiveDashboard(dashboard.id);
+                        setActiveSection('custom-dashboards');
+                      }}
+                    >
+                      <LayoutGrid className="h-4 w-4 mr-2" />
+                      <span className="truncate">{dashboard.name}</span>
+                    </Button>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-sm text-muted-foreground"
+                    onClick={() => {
+                      setActiveDashboard(null);
+                      setActiveSection('custom-dashboards');
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Dashboard
+                  </Button>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
