@@ -88,22 +88,23 @@ const WIDGET_ICONS: Record<WidgetType, typeof LayoutGrid> = {
   'filter': Filter,
 };
 
-// Filter widget with Apply button
+// Filter widget with Apply button and results table
 function FilterWidgetContent({
   query,
   onQueryChange,
-  filteredCount,
+  filteredData,
   totalCount,
   conditionCount,
 }: {
   query: QueryGroup;
   onQueryChange?: (query: QueryGroup) => void;
-  filteredCount: number;
+  filteredData: Personnel[];
   totalCount: number;
   conditionCount: number;
 }) {
   const [pendingQuery, setPendingQuery] = useState<QueryGroup>(query);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showResults, setShowResults] = useState(true);
 
   // Sync pending query when external query changes
   useEffect(() => {
@@ -131,6 +132,8 @@ function FilterWidgetContent({
   const pendingConditionCount = pendingQuery.conditions.length +
     (pendingQuery.groups?.reduce((sum, g) => sum + g.conditions.length, 0) || 0);
 
+  const filteredCount = filteredData.length;
+
   return (
     <div className="space-y-4">
       <QueryBuilder
@@ -146,7 +149,7 @@ function FilterWidgetContent({
               <span className="font-medium text-foreground">{totalCount}</span> personnel
             </span>
           ) : (
-            <span>No filters applied</span>
+            <span>No filters applied - showing all {totalCount} personnel</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -176,6 +179,64 @@ function FilterWidgetContent({
           <QuerySummary query={query} />
         </div>
       )}
+
+      {/* Results Table */}
+      <div className="pt-4 border-t">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-medium">Results Preview</h4>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowResults(!showResults)}
+          >
+            {showResults ? 'Hide' : 'Show'}
+          </Button>
+        </div>
+        {showResults && (
+          <div className="border rounded-lg overflow-hidden">
+            <div className="max-h-[400px] overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 sticky top-0">
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-3 font-medium">Name</th>
+                    <th className="text-left py-2 px-3 font-medium">Rank</th>
+                    <th className="text-left py-2 px-3 font-medium">Branch</th>
+                    <th className="text-left py-2 px-3 font-medium">Unit</th>
+                    <th className="text-left py-2 px-3 font-medium">Clearance</th>
+                    <th className="text-left py-2 px-3 font-medium">Medical</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredData.slice(0, 50).map((person, i) => (
+                    <tr key={person.id || i} className="border-b border-border/50 hover:bg-muted/30">
+                      <td className="py-2 px-3">{person.lastName}, {person.firstName}</td>
+                      <td className="py-2 px-3">{person.rank}</td>
+                      <td className="py-2 px-3">{person.branch}</td>
+                      <td className="py-2 px-3 max-w-[200px] truncate">{person.unit}</td>
+                      <td className="py-2 px-3">{person.clearanceLevel}</td>
+                      <td className="py-2 px-3">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-xs",
+                          person.medicalReadiness === 'Green' && "bg-green-500/20 text-green-600",
+                          person.medicalReadiness === 'Yellow' && "bg-yellow-500/20 text-yellow-600",
+                          person.medicalReadiness === 'Red' && "bg-red-500/20 text-red-600",
+                        )}>
+                          {person.medicalReadiness}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {filteredCount > 50 && (
+              <div className="px-3 py-2 bg-muted/30 text-sm text-muted-foreground text-center">
+                Showing first 50 of {filteredCount} results
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -349,7 +410,7 @@ function DashboardWidgetRenderer({
           <FilterWidgetContent
             query={query}
             onQueryChange={onQueryChange}
-            filteredCount={data.length}
+            filteredData={data}
             totalCount={totalCount || data.length}
             conditionCount={conditionCount}
           />
