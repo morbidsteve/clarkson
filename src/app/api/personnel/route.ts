@@ -48,11 +48,11 @@ const FIELD_PRESETS: Record<string, (keyof Personnel)[]> = {
 };
 
 // Pick specific fields from a personnel record
-function pickFields<T extends Record<string, unknown>>(obj: T, fields: string[]): Partial<T> {
-  const result: Partial<T> = {};
+function pickFields(obj: Personnel, fields: (keyof Personnel)[]): Partial<Personnel> {
+  const result: Partial<Personnel> = {};
   for (const field of fields) {
     if (field in obj) {
-      result[field as keyof T] = obj[field as keyof T];
+      result[field] = obj[field];
     }
   }
   return result;
