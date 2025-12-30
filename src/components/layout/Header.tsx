@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Bell, User, Plus, Save, RotateCcw } from 'lucide-react';
+import { Search, Bell, User, Save, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { AddPersonnelDialog } from '@/components/dialogs/AddPersonnelDialog';
 
 export function Header() {
   const { globalSearch, setGlobalSearch, saveView, clearFilters } = useDashboardStore();
@@ -85,10 +86,7 @@ export function Header() {
           </DialogContent>
         </Dialog>
 
-        <Button variant="default" size="sm" className="gap-2 gradient-primary border-0">
-          <Plus className="h-4 w-4" />
-          Add Personnel
-        </Button>
+        <AddPersonnelDialog />
 
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative">

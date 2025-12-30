@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePersonnel } from '@/hooks/usePersonnel';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { useNavigationStore } from '@/lib/stores/navigation-store';
+import { usePersonnelStore } from '@/lib/stores/personnel-store';
 
 // Section Components
 import { DashboardSection } from '@/components/sections/DashboardSection';
@@ -82,8 +83,8 @@ function PersonnelSection() {
 
 export default function Home() {
   const { activeSection } = useNavigationStore();
-
   const { globalSearch, filters } = useDashboardStore();
+  const { addedPersonnel } = usePersonnelStore();
 
   // Fetch data for all sections that need it
   const { data, isLoading } = usePersonnel({
@@ -93,26 +94,41 @@ export default function Home() {
     filters: filters as Record<string, string | boolean>,
   });
 
+  // Merge locally added personnel with API data
+  const mergedData = useMemo(() => {
+    const apiData = data?.data || [];
+    return [...addedPersonnel, ...apiData];
+  }, [data?.data, addedPersonnel]);
+
+  const mergedStats = useMemo(() => {
+    if (!data?.stats) return null;
+    // Update total count to include added personnel
+    return {
+      ...data.stats,
+      total: data.stats.total + addedPersonnel.length,
+    };
+  }, [data?.stats, addedPersonnel.length]);
+
   const renderSection = () => {
     switch (activeSection) {
       case 'dashboard':
-        return <DashboardSection stats={data?.stats ?? null} isLoading={isLoading} />;
+        return <DashboardSection stats={mergedStats} isLoading={isLoading} />;
       case 'organization':
-        return <OrganizationSection data={data?.data || []} stats={data?.stats ?? null} isLoading={isLoading} />;
+        return <OrganizationSection data={mergedData} stats={mergedStats} isLoading={isLoading} />;
       case 'personnel':
         return <PersonnelSection />;
       case 'security':
-        return <SecuritySection data={data?.data || []} stats={data?.stats ?? null} isLoading={isLoading} />;
+        return <SecuritySection data={mergedData} stats={mergedStats} isLoading={isLoading} />;
       case 'readiness':
-        return <ReadinessSection data={data?.data || []} stats={data?.stats ?? null} isLoading={isLoading} />;
+        return <ReadinessSection data={mergedData} stats={mergedStats} isLoading={isLoading} />;
       case 'training':
-        return <TrainingSection data={data?.data || []} stats={data?.stats ?? null} isLoading={isLoading} />;
+        return <TrainingSection data={mergedData} stats={mergedStats} isLoading={isLoading} />;
       case 'medical':
-        return <MedicalSection data={data?.data || []} stats={data?.stats ?? null} isLoading={isLoading} />;
+        return <MedicalSection data={mergedData} stats={mergedStats} isLoading={isLoading} />;
       case 'custom-dashboards':
-        return <CustomDashboardSection data={data?.data || []} stats={data?.stats ?? null} isLoading={isLoading} />;
+        return <CustomDashboardSection data={mergedData} stats={mergedStats} isLoading={isLoading} />;
       default:
-        return <DashboardSection stats={data?.stats ?? null} isLoading={isLoading} />;
+        return <DashboardSection stats={mergedStats} isLoading={isLoading} />;
     }
   };
 
