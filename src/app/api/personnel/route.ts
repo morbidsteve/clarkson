@@ -52,7 +52,7 @@ function pickFields(obj: Personnel, fields: (keyof Personnel)[]): Partial<Person
   const result: Partial<Personnel> = {};
   for (const field of fields) {
     if (field in obj) {
-      result[field] = obj[field];
+      (result as Record<string, unknown>)[field] = obj[field];
     }
   }
   return result;
