@@ -3,6 +3,9 @@
 import { useQuery } from '@tanstack/react-query';
 import type { PersonnelResponse } from '@/types/personnel';
 
+// Field preset types matching API
+export type FieldPreset = 'minimal' | 'core' | 'security' | 'medical' | 'training' | 'readiness' | 'full';
+
 interface UsePersonnelOptions {
   page?: number;
   limit?: number;
@@ -10,6 +13,7 @@ interface UsePersonnelOptions {
   sort?: string;
   order?: 'asc' | 'desc';
   filters?: Record<string, string | boolean>;
+  fields?: FieldPreset; // Use field preset to reduce payload
 }
 
 async function fetchPersonnel(options: UsePersonnelOptions): Promise<PersonnelResponse> {
@@ -20,6 +24,7 @@ async function fetchPersonnel(options: UsePersonnelOptions): Promise<PersonnelRe
   if (options.search) params.set('search', options.search);
   if (options.sort) params.set('sort', options.sort);
   if (options.order) params.set('order', options.order);
+  if (options.fields) params.set('fields', options.fields);
 
   if (options.filters) {
     Object.entries(options.filters).forEach(([key, value]) => {

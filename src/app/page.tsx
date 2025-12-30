@@ -1,10 +1,22 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { usePersonnel } from '@/hooks/usePersonnel';
+import { usePersonnel, type FieldPreset } from '@/hooks/usePersonnel';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { useNavigationStore } from '@/lib/stores/navigation-store';
 import { usePersonnelStore } from '@/lib/stores/personnel-store';
+
+// Map sections to optimal field presets for faster loading
+const SECTION_FIELD_PRESETS: Record<string, FieldPreset> = {
+  dashboard: 'core',
+  organization: 'core',
+  personnel: 'full', // Full data for personnel table
+  security: 'security',
+  readiness: 'readiness',
+  training: 'training',
+  medical: 'medical',
+  'custom-dashboards': 'full', // Full data for custom queries
+};
 
 // Section Components
 import { DashboardSection } from '@/components/sections/DashboardSection';
@@ -86,12 +98,16 @@ export default function Home() {
   const { globalSearch, filters } = useDashboardStore();
   const { addedPersonnel } = usePersonnelStore();
 
+  // Get the appropriate field preset for the current section
+  const fieldPreset = SECTION_FIELD_PRESETS[activeSection] || 'core';
+
   // Fetch data for all sections that need it
   const { data, isLoading } = usePersonnel({
     page: 1,
     limit: 10000, // Get all data for section views (no limit)
     search: globalSearch,
     filters: filters as Record<string, string | boolean>,
+    fields: fieldPreset, // Use field preset to reduce payload size
   });
 
   // Merge locally added personnel with API data

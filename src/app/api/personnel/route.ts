@@ -1,5 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePersonnelData, searchPersonnel, getStatistics } from '@/lib/mock-data';
+import type { Personnel } from '@/types/personnel';
+
+// Field presets for different use cases - reduces payload size significantly
+const FIELD_PRESETS: Record<string, (keyof Personnel)[]> = {
+  // Minimal fields for dashboard stats only
+  minimal: ['id', 'firstName', 'lastName', 'branch', 'rank', 'unit'],
+  // Core fields for most views
+  core: [
+    'id', 'firstName', 'lastName', 'middleName', 'rank', 'payGrade', 'branch',
+    'activeStatus', 'unit', 'dutyStation', 'mos', 'yearsOfService',
+    'clearanceLevel', 'medicalReadiness', 'deploymentEligible', 'profileStatus'
+  ],
+  // Security-focused fields
+  security: [
+    'id', 'firstName', 'lastName', 'rank', 'unit', 'branch',
+    'clearanceLevel', 'clearanceDate', 'clearanceExpiry', 'polygraphType',
+    'polygraphDate', 'specialAccess', 'accessStatus', 'lastInvestigation',
+    'nda', 'ndaDate', 'foreignContacts', 'foreignTravel', 'securityIncidents',
+    'lastSecurityBriefing'
+  ],
+  // Medical-focused fields
+  medical: [
+    'id', 'firstName', 'lastName', 'rank', 'unit', 'branch',
+    'medicalReadiness', 'dentalReadiness', 'dentalClass', 'lastPhysicalDate',
+    'nextPhysicalDue', 'deploymentEligible', 'profileStatus', 'pulhes',
+    'visionCategory', 'hearingCategory', 'vaccinations', 'allergies',
+    'currentMedications', 'medicalLimitations', 'mentalHealthStatus',
+    'upcomingAppointments', 'bloodType'
+  ],
+  // Training-focused fields
+  training: [
+    'id', 'firstName', 'lastName', 'rank', 'unit', 'branch',
+    'basicTrainingComplete', 'basicTrainingDate', 'aitComplete', 'aitDate',
+    'aitMos', 'lastPtTestDate', 'ptTestScore', 'ptPushups', 'ptSitups',
+    'ptRunTime', 'weaponsQualification', 'lastWeaponsQualDate', 'certifications',
+    'schoolsAttended', 'totalTrainingHours', 'annualTrainingComplete',
+    'annualTrainingDate', 'specialSkills'
+  ],
+  // Readiness overview
+  readiness: [
+    'id', 'firstName', 'lastName', 'rank', 'unit', 'branch',
+    'medicalReadiness', 'dentalReadiness', 'deploymentEligible', 'profileStatus',
+    'ptTestScore', 'weaponsQualification', 'annualTrainingComplete',
+    'clearanceLevel', 'accessStatus'
+  ],
+};
+
+// Pick specific fields from a personnel record
+function pickFields<T extends Record<string, unknown>>(obj: T, fields: string[]): Partial<T> {
+  const result: Partial<T> = {};
+  for (const field of fields) {
+    if (field in obj) {
+      result[field as keyof T] = obj[field as keyof T];
+    }
+  }
+  return result;
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -12,6 +69,10 @@ export async function GET(request: NextRequest) {
   // Sorting params
   const sortField = searchParams.get('sort') || 'lastName';
   const sortOrder = searchParams.get('order') || 'asc';
+
+  // Field selection - use preset or 'full' for all fields
+  const fieldsParam = searchParams.get('fields') || 'full';
+  const selectedFields = FIELD_PRESETS[fieldsParam] || null;
 
   // Filter params
   const filters: Record<string, string | boolean | undefined> = {};
@@ -59,17 +120,28 @@ export async function GET(request: NextRequest) {
   const endIndex = startIndex + limit;
 
   // Get paginated data
-  const paginatedData = filteredData.slice(startIndex, endIndex);
+  let paginatedData = filteredData.slice(startIndex, endIndex);
+
+  // Apply field filtering if not 'full'
+  const outputData = selectedFields
+    ? paginatedData.map(p => pickFields(p, selectedFields))
+    : paginatedData;
 
   // Get statistics
   const stats = getStatistics(allData);
 
-  return NextResponse.json({
-    data: paginatedData,
+  // Create response with caching headers
+  const response = NextResponse.json({
+    data: outputData,
     total,
     page,
     pageSize: limit,
     totalPages,
     stats,
   });
+
+  // Add cache headers - cache for 5 minutes on CDN, 1 minute in browser
+  response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
+
+  return response;
 }

@@ -813,16 +813,18 @@ export function CustomDashboardSection({
           setPendingFilterQuery(createEmptyGroup());
         }
       }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className={cn(
+          configuringFilter ? "max-w-4xl w-[90vw] h-[85vh] max-h-[850px]" : "max-w-2xl"
+        )}>
           {configuringFilter ? (
-            <>
+            <div className="flex flex-col h-full">
               <DialogHeader>
                 <DialogTitle>Configure Data Filter</DialogTitle>
                 <DialogDescription>
                   Build your filter query, then add it to your dashboard.
                 </DialogDescription>
               </DialogHeader>
-              <div className="py-4 max-h-[60vh] overflow-auto">
+              <div className="py-4 flex-1 overflow-auto min-h-0">
                 <QueryBuilder
                   query={pendingFilterQuery}
                   onChange={setPendingFilterQuery}
@@ -834,7 +836,7 @@ export function CustomDashboardSection({
                   </div>
                 )}
               </div>
-              <DialogFooter>
+              <DialogFooter className="mt-4 pt-4 border-t flex-shrink-0">
                 <Button variant="ghost" onClick={handleCancelFilterConfig}>
                   Back
                 </Button>
@@ -843,7 +845,7 @@ export function CustomDashboardSection({
                   Add to Dashboard
                 </Button>
               </DialogFooter>
-            </>
+            </div>
           ) : (
             <>
               <DialogHeader>
