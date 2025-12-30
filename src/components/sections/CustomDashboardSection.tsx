@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -88,126 +88,91 @@ const WIDGET_ICONS: Record<WidgetType, typeof LayoutGrid> = {
   'filter': Filter,
 };
 
-// Filter widget with Apply button and results table
-function FilterWidgetContent({
-  query,
-  onQueryChange,
+// Saved filter card - compact view showing just results
+function SavedFilterCard({
+  widget,
   filteredData,
   totalCount,
-  conditionCount,
+  onEdit,
+  onRemove,
+  isEditing,
 }: {
-  query: QueryGroup;
-  onQueryChange?: (query: QueryGroup) => void;
+  widget: DashboardWidget;
   filteredData: Personnel[];
   totalCount: number;
-  conditionCount: number;
+  onEdit: () => void;
+  onRemove: () => void;
+  isEditing: boolean;
 }) {
-  const [pendingQuery, setPendingQuery] = useState<QueryGroup>(query);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [showResults, setShowResults] = useState(true);
-
-  // Sync pending query when external query changes
-  useEffect(() => {
-    setPendingQuery(query);
-    setHasChanges(false);
-  }, [query]);
-
-  const handleQueryChange = (newQuery: QueryGroup) => {
-    setPendingQuery(newQuery);
-    setHasChanges(true);
-  };
-
-  const handleApply = () => {
-    onQueryChange?.(pendingQuery);
-    setHasChanges(false);
-  };
-
-  const handleClear = () => {
-    const emptyQuery = createEmptyGroup();
-    setPendingQuery(emptyQuery);
-    onQueryChange?.(emptyQuery);
-    setHasChanges(false);
-  };
-
-  const pendingConditionCount = pendingQuery.conditions.length +
-    (pendingQuery.groups?.reduce((sum, g) => sum + g.conditions.length, 0) || 0);
-
+  const query = widget.config.query as QueryGroup;
+  const conditionCount = query?.conditions?.length +
+    (query?.groups?.reduce((sum, g) => sum + g.conditions.length, 0) || 0) || 0;
   const filteredCount = filteredData.length;
 
   return (
-    <div className="space-y-4">
-      <QueryBuilder
-        query={pendingQuery}
-        onChange={handleQueryChange}
-      />
-
-      <div className="flex items-center justify-between pt-3 border-t">
-        <div className="text-sm text-muted-foreground">
-          {conditionCount > 0 ? (
-            <span>
-              Showing <span className="font-medium text-foreground">{filteredCount}</span> of{' '}
-              <span className="font-medium text-foreground">{totalCount}</span> personnel
-            </span>
-          ) : (
-            <span>No filters applied - showing all {totalCount} personnel</span>
-          )}
-        </div>
+    <Card className="h-full">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex items-center gap-2">
-          {(conditionCount > 0 || pendingConditionCount > 0) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClear}
-            >
-              Clear
-            </Button>
+          {isEditing && (
+            <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
           )}
-          <Button
-            size="sm"
-            onClick={handleApply}
-            disabled={!hasChanges}
-            className="gap-2"
-          >
-            <Check className="h-4 w-4" />
-            Apply Filter
-          </Button>
+          <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
+          <Badge variant="secondary" className="text-xs">
+            {filteredCount} result{filteredCount !== 1 ? 's' : ''}
+          </Badge>
         </div>
-      </div>
-
-      {conditionCount > 0 && (
-        <div className="pt-2 border-t">
-          <QuerySummary query={query} />
-        </div>
-      )}
-
-      {/* Results Table */}
-      <div className="pt-4 border-t">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-medium">Results Preview</h4>
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
-            size="sm"
-            onClick={() => setShowResults(!showResults)}
+            size="icon"
+            className="h-7 w-7"
+            onClick={onEdit}
           >
-            {showResults ? 'Hide' : 'Show'}
+            <Edit2 className="h-4 w-4" />
           </Button>
+          {isEditing && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onRemove}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        {showResults && (
-          <div className="border rounded-lg overflow-hidden">
-            <div className="max-h-[400px] overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 sticky top-0">
-                  <tr className="border-b">
-                    <th className="text-left py-2 px-3 font-medium">Name</th>
-                    <th className="text-left py-2 px-3 font-medium">Rank</th>
-                    <th className="text-left py-2 px-3 font-medium">Branch</th>
-                    <th className="text-left py-2 px-3 font-medium">Unit</th>
-                    <th className="text-left py-2 px-3 font-medium">Clearance</th>
-                    <th className="text-left py-2 px-3 font-medium">Medical</th>
+      </CardHeader>
+      <CardContent>
+        {/* Filter summary */}
+        {conditionCount > 0 && (
+          <div className="mb-3 pb-3 border-b">
+            <QuerySummary query={query} />
+          </div>
+        )}
+
+        {/* Results Table */}
+        <div className="border rounded-lg overflow-hidden">
+          <div className="max-h-[350px] overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 sticky top-0">
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3 font-medium">Name</th>
+                  <th className="text-left py-2 px-3 font-medium">Rank</th>
+                  <th className="text-left py-2 px-3 font-medium">Branch</th>
+                  <th className="text-left py-2 px-3 font-medium">Unit</th>
+                  <th className="text-left py-2 px-3 font-medium">Clearance</th>
+                  <th className="text-left py-2 px-3 font-medium">Medical</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredData.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                      No results match your filter criteria
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredData.slice(0, 50).map((person, i) => (
+                ) : (
+                  filteredData.slice(0, 50).map((person, i) => (
                     <tr key={person.id || i} className="border-b border-border/50 hover:bg-muted/30">
                       <td className="py-2 px-3">{person.lastName}, {person.firstName}</td>
                       <td className="py-2 px-3">{person.rank}</td>
@@ -225,19 +190,30 @@ function FilterWidgetContent({
                         </span>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {filteredCount > 50 && (
-              <div className="px-3 py-2 bg-muted/30 text-sm text-muted-foreground text-center">
-                Showing first 50 of {filteredCount} results
-              </div>
-            )}
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
-    </div>
+          {filteredCount > 50 && (
+            <div className="px-3 py-2 bg-muted/30 text-sm text-muted-foreground text-center">
+              Showing first 50 of {filteredCount} results
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 text-sm text-muted-foreground text-center">
+          {conditionCount > 0 ? (
+            <span>
+              Showing <span className="font-medium text-foreground">{filteredCount}</span> of{' '}
+              <span className="font-medium text-foreground">{totalCount}</span> personnel
+            </span>
+          ) : (
+            <span>No filters applied - showing all {totalCount} personnel</span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -248,16 +224,12 @@ function DashboardWidgetRenderer({
   stats,
   isEditing,
   onRemove,
-  onQueryChange,
-  totalCount,
 }: {
   widget: DashboardWidget;
   data: Personnel[];
   stats: PersonnelStats | null;
   isEditing: boolean;
   onRemove: () => void;
-  onQueryChange?: (query: QueryGroup) => void;
-  totalCount?: number;
 }) {
   const sizeClasses: Record<string, string> = {
     small: 'col-span-1',
@@ -401,22 +373,6 @@ function DashboardWidgetRenderer({
         );
       }
 
-      case 'filter': {
-        const query = widget.config.query || createEmptyGroup();
-        const conditionCount = query.conditions.length +
-          (query.groups?.reduce((sum, g) => sum + g.conditions.length, 0) || 0);
-
-        return (
-          <FilterWidgetContent
-            query={query}
-            onQueryChange={onQueryChange}
-            filteredData={data}
-            totalCount={totalCount || data.length}
-            conditionCount={conditionCount}
-          />
-        );
-      }
-
       default:
         return <p className="text-muted-foreground">Unknown widget type</p>;
     }
@@ -486,6 +442,11 @@ export function CustomDashboardSection({
   const [configuringFilter, setConfiguringFilter] = useState(false);
   const [pendingFilterQuery, setPendingFilterQuery] = useState<QueryGroup>(createEmptyGroup());
 
+  // Edit filter dialog state
+  const [editingFilterWidget, setEditingFilterWidget] = useState<DashboardWidget | null>(null);
+  const [editFilterQuery, setEditFilterQuery] = useState<QueryGroup>(createEmptyGroup());
+  const [editFilterTitle, setEditFilterTitle] = useState('');
+
   const activeDashboard = dashboards.find((d) => d.id === activeDashboardId);
 
   // Find filter widget and get its query
@@ -518,13 +479,6 @@ export function CustomDashboardSection({
       readinessDistribution: [],
     };
   }, [filteredData]);
-
-  // Handler for updating filter widget query
-  const handleFilterQueryChange = (widgetId: string, query: QueryGroup) => {
-    if (activeDashboardId) {
-      updateWidget(activeDashboardId, widgetId, { config: { query } });
-    }
-  };
 
   const handleCreateDashboard = () => {
     if (newDashboardName.trim()) {
@@ -567,6 +521,31 @@ export function CustomDashboardSection({
   const handleCancelFilterConfig = () => {
     setConfiguringFilter(false);
     setPendingFilterQuery(createEmptyGroup());
+  };
+
+  // Edit filter handlers
+  const handleOpenEditFilter = (widget: DashboardWidget) => {
+    setEditingFilterWidget(widget);
+    setEditFilterQuery(widget.config.query || createEmptyGroup());
+    setEditFilterTitle(widget.title);
+  };
+
+  const handleSaveEditFilter = () => {
+    if (activeDashboardId && editingFilterWidget) {
+      updateWidget(activeDashboardId, editingFilterWidget.id, {
+        title: editFilterTitle,
+        config: { query: editFilterQuery },
+      });
+    }
+    setEditingFilterWidget(null);
+    setEditFilterQuery(createEmptyGroup());
+    setEditFilterTitle('');
+  };
+
+  const handleCancelEditFilter = () => {
+    setEditingFilterWidget(null);
+    setEditFilterQuery(createEmptyGroup());
+    setEditFilterTitle('');
   };
 
   const handleSaveName = () => {
@@ -850,18 +829,44 @@ export function CustomDashboardSection({
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
         >
           <AnimatePresence mode="popLayout">
-            {activeDashboard.widgets.map((widget) => (
-              <DashboardWidgetRenderer
-                key={widget.id}
-                widget={widget}
-                data={filteredData}
-                stats={filteredStats}
-                isEditing={isEditing}
-                onRemove={() => removeWidget(activeDashboard.id, widget.id)}
-                onQueryChange={widget.type === 'filter' ? (query) => handleFilterQueryChange(widget.id, query) : undefined}
-                totalCount={data.length}
-              />
-            ))}
+            {activeDashboard.widgets.map((widget) => {
+              // Render filter widgets with SavedFilterCard
+              if (widget.type === 'filter') {
+                const widgetQuery = widget.config.query || createEmptyGroup();
+                const widgetFilteredData = executeQuery(data, widgetQuery);
+                return (
+                  <motion.div
+                    key={widget.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="col-span-full"
+                  >
+                    <SavedFilterCard
+                      widget={widget}
+                      filteredData={widgetFilteredData}
+                      totalCount={data.length}
+                      onEdit={() => handleOpenEditFilter(widget)}
+                      onRemove={() => removeWidget(activeDashboard.id, widget.id)}
+                      isEditing={isEditing}
+                    />
+                  </motion.div>
+                );
+              }
+
+              // Render other widgets normally
+              return (
+                <DashboardWidgetRenderer
+                  key={widget.id}
+                  widget={widget}
+                  data={filteredData}
+                  stats={filteredStats}
+                  isEditing={isEditing}
+                  onRemove={() => removeWidget(activeDashboard.id, widget.id)}
+                />
+              );
+            })}
           </AnimatePresence>
         </motion.div>
       )}
@@ -941,6 +946,54 @@ export function CustomDashboardSection({
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Filter Dialog */}
+      <Dialog open={!!editingFilterWidget} onOpenChange={(open) => {
+        if (!open) handleCancelEditFilter();
+      }}>
+        <DialogContent className="max-w-4xl w-[90vw] h-[85vh] max-h-[850px]">
+          <div className="flex flex-col h-full">
+            <DialogHeader>
+              <DialogTitle>Edit Filter</DialogTitle>
+              <DialogDescription>
+                Modify your filter settings and query.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 flex-1 overflow-auto min-h-0 space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Filter Title</label>
+                <Input
+                  value={editFilterTitle}
+                  onChange={(e) => setEditFilterTitle(e.target.value)}
+                  placeholder="Filter title"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Filter Conditions</label>
+                <QueryBuilder
+                  query={editFilterQuery}
+                  onChange={setEditFilterQuery}
+                />
+              </div>
+              {editFilterQuery.conditions.length > 0 && (
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-muted-foreground mb-2">Filter Summary:</p>
+                  <QuerySummary query={editFilterQuery} />
+                </div>
+              )}
+            </div>
+            <DialogFooter className="mt-4 pt-4 border-t flex-shrink-0">
+              <Button variant="ghost" onClick={handleCancelEditFilter}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEditFilter} className="gap-2">
+                <Check className="h-4 w-4" />
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
