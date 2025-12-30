@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -87,6 +87,98 @@ const WIDGET_ICONS: Record<WidgetType, typeof LayoutGrid> = {
   'recent-activity': Activity,
   'filter': Filter,
 };
+
+// Filter widget with Apply button
+function FilterWidgetContent({
+  query,
+  onQueryChange,
+  filteredCount,
+  totalCount,
+  conditionCount,
+}: {
+  query: QueryGroup;
+  onQueryChange?: (query: QueryGroup) => void;
+  filteredCount: number;
+  totalCount: number;
+  conditionCount: number;
+}) {
+  const [pendingQuery, setPendingQuery] = useState<QueryGroup>(query);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Sync pending query when external query changes
+  useEffect(() => {
+    setPendingQuery(query);
+    setHasChanges(false);
+  }, [query]);
+
+  const handleQueryChange = (newQuery: QueryGroup) => {
+    setPendingQuery(newQuery);
+    setHasChanges(true);
+  };
+
+  const handleApply = () => {
+    onQueryChange?.(pendingQuery);
+    setHasChanges(false);
+  };
+
+  const handleClear = () => {
+    const emptyQuery = createEmptyGroup();
+    setPendingQuery(emptyQuery);
+    onQueryChange?.(emptyQuery);
+    setHasChanges(false);
+  };
+
+  const pendingConditionCount = pendingQuery.conditions.length +
+    (pendingQuery.groups?.reduce((sum, g) => sum + g.conditions.length, 0) || 0);
+
+  return (
+    <div className="space-y-4">
+      <QueryBuilder
+        query={pendingQuery}
+        onChange={handleQueryChange}
+      />
+
+      <div className="flex items-center justify-between pt-3 border-t">
+        <div className="text-sm text-muted-foreground">
+          {conditionCount > 0 ? (
+            <span>
+              Showing <span className="font-medium text-foreground">{filteredCount}</span> of{' '}
+              <span className="font-medium text-foreground">{totalCount}</span> personnel
+            </span>
+          ) : (
+            <span>No filters applied</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {(conditionCount > 0 || pendingConditionCount > 0) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClear}
+            >
+              Clear
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={handleApply}
+            disabled={!hasChanges}
+            className="gap-2"
+          >
+            <Check className="h-4 w-4" />
+            Apply Filter
+          </Button>
+        </div>
+      </div>
+
+      {conditionCount > 0 && (
+        <div className="pt-2 border-t">
+          <QuerySummary query={query} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Widget renderer component
 function DashboardWidgetRenderer({
@@ -254,32 +346,13 @@ function DashboardWidgetRenderer({
           (query.groups?.reduce((sum, g) => sum + g.conditions.length, 0) || 0);
 
         return (
-          <div className="space-y-4">
-            {conditionCount > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Showing <span className="font-medium text-foreground">{data.length}</span> of{' '}
-                  <span className="font-medium text-foreground">{totalCount || data.length}</span> personnel
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onQueryChange?.(createEmptyGroup())}
-                >
-                  Clear Filters
-                </Button>
-              </div>
-            )}
-            <QueryBuilder
-              query={query}
-              onChange={(newQuery) => onQueryChange?.(newQuery)}
-            />
-            {conditionCount > 0 && (
-              <div className="pt-2 border-t">
-                <QuerySummary query={query} />
-              </div>
-            )}
-          </div>
+          <FilterWidgetContent
+            query={query}
+            onQueryChange={onQueryChange}
+            filteredCount={data.length}
+            totalCount={totalCount || data.length}
+            conditionCount={conditionCount}
+          />
         );
       }
 
