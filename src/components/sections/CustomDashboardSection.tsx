@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo, useCallback, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout';
 import {
   Plus,
   Edit2,
@@ -41,6 +42,7 @@ import {
 import {
   useCustomDashboardStore,
   WIDGET_TEMPLATES,
+  DEFAULT_LAYOUTS,
   type DashboardWidget,
   type WidgetType,
 } from '@/lib/stores/custom-dashboard-store';
@@ -48,6 +50,10 @@ import { QueryBuilder, QuerySummary } from '@/components/dashboard/QueryBuilder'
 import { executeQuery, createEmptyGroup, type QueryGroup } from '@/lib/query-builder';
 import { cn } from '@/lib/utils';
 import type { Personnel, PersonnelStats } from '@/types/personnel';
+
+// Import react-grid-layout styles
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 
 // Import chart components
 import {
@@ -110,11 +116,11 @@ function SavedFilterCard({
   const filteredCount = filteredData.length;
 
   return (
-    <Card className="h-full">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card className={cn('h-full flex flex-col', isEditing && 'ring-2 ring-primary/20')}>
+      <CardHeader className="flex flex-row items-center justify-between pb-2 flex-shrink-0">
         <div className="flex items-center gap-2">
           {isEditing && (
-            <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
+            <GripVertical className="drag-handle h-4 w-4 text-muted-foreground cursor-grab hover:text-foreground" />
           )}
           <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
           <Badge variant="secondary" className="text-xs">
@@ -142,7 +148,7 @@ function SavedFilterCard({
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-auto flex flex-col">
         {/* Filter summary */}
         {conditionCount > 0 && (
           <div className="mb-3 pb-3 border-b">
@@ -151,8 +157,8 @@ function SavedFilterCard({
         )}
 
         {/* Results Table */}
-        <div className="border rounded-lg overflow-hidden">
-          <div className="max-h-[350px] overflow-auto">
+        <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 sticky top-0">
                 <tr className="border-b">
@@ -202,7 +208,7 @@ function SavedFilterCard({
           )}
         </div>
 
-        <div className="mt-3 text-sm text-muted-foreground text-center">
+        <div className="pt-3 text-sm text-muted-foreground text-center flex-shrink-0">
           {conditionCount > 0 ? (
             <span>
               Showing <span className="font-medium text-foreground">{filteredCount}</span> of{' '}
@@ -231,13 +237,6 @@ function DashboardWidgetRenderer({
   isEditing: boolean;
   onRemove: () => void;
 }) {
-  const sizeClasses: Record<string, string> = {
-    small: 'col-span-1',
-    medium: 'col-span-1 md:col-span-2',
-    large: 'col-span-1 md:col-span-2 lg:col-span-3',
-    full: 'col-span-full',
-  };
-
   const renderContent = () => {
     switch (widget.type) {
       case 'stat-card': {
@@ -379,35 +378,27 @@ function DashboardWidgetRenderer({
   };
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      className={cn(sizeClasses[widget.size])}
-    >
-      <Card className={cn('h-full', isEditing && 'ring-2 ring-primary/20')}>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div className="flex items-center gap-2">
-            {isEditing && (
-              <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-            )}
-            <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
-          </div>
+    <Card className={cn('h-full flex flex-col', isEditing && 'ring-2 ring-primary/20')}>
+      <CardHeader className="flex flex-row items-center justify-between pb-2 flex-shrink-0">
+        <div className="flex items-center gap-2">
           {isEditing && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={onRemove}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <GripVertical className="drag-handle h-4 w-4 text-muted-foreground cursor-grab hover:text-foreground" />
           )}
-        </CardHeader>
-        <CardContent>{renderContent()}</CardContent>
-      </Card>
-    </motion.div>
+          <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
+        </div>
+        {isEditing && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={onRemove}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="flex-1 overflow-auto">{renderContent()}</CardContent>
+    </Card>
   );
 }
 
@@ -429,6 +420,7 @@ export function CustomDashboardSection({
     addWidget,
     removeWidget,
     updateWidget,
+    updateLayouts,
   } = useCustomDashboardStore();
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -446,6 +438,9 @@ export function CustomDashboardSection({
   const [editingFilterWidget, setEditingFilterWidget] = useState<DashboardWidget | null>(null);
   const [editFilterQuery, setEditFilterQuery] = useState<QueryGroup>(createEmptyGroup());
   const [editFilterTitle, setEditFilterTitle] = useState('');
+
+  // Grid layout width tracking
+  const { width: containerWidth, containerRef } = useContainerWidth({ initialWidth: 1200 });
 
   const activeDashboard = dashboards.find((d) => d.id === activeDashboardId);
 
@@ -479,6 +474,60 @@ export function CustomDashboardSection({
       readinessDistribution: [],
     };
   }, [filteredData]);
+
+  // Generate layouts from widgets
+  const generateLayouts = useCallback(() => {
+    if (!activeDashboard) return { lg: [], md: [], sm: [] };
+
+    let nextY = 0;
+    const layouts = activeDashboard.widgets.map((widget, index) => {
+      const defaultLayout = DEFAULT_LAYOUTS[widget.type] || { w: 4, h: 4, minW: 2, minH: 2 };
+      const savedLayout = widget.layout;
+
+      // Use saved layout if available, otherwise calculate position
+      const x = savedLayout?.x ?? (index * 3) % 12;
+      const y = savedLayout?.y ?? nextY;
+      const w = savedLayout?.w ?? defaultLayout.w!;
+      const h = savedLayout?.h ?? defaultLayout.h!;
+
+      // Update nextY for next widget if no saved layout
+      if (!savedLayout) {
+        nextY = y + h;
+      }
+
+      return {
+        i: widget.id,
+        x,
+        y,
+        w,
+        h,
+        minW: defaultLayout.minW,
+        minH: defaultLayout.minH,
+      };
+    });
+
+    return { lg: layouts, md: layouts, sm: layouts };
+  }, [activeDashboard]);
+
+  const layouts = useMemo(() => generateLayouts(), [generateLayouts]);
+
+  // Handle layout changes
+  const handleLayoutChange = useCallback(
+    (currentLayout: readonly { readonly i: string; readonly x: number; readonly y: number; readonly w: number; readonly h: number }[]) => {
+      if (activeDashboardId && isEditing) {
+        // Convert readonly layout to mutable for store
+        const mutableLayout = currentLayout.map(item => ({
+          i: item.i,
+          x: item.x,
+          y: item.y,
+          w: item.w,
+          h: item.h,
+        }));
+        updateLayouts(activeDashboardId, mutableLayout);
+      }
+    },
+    [activeDashboardId, isEditing, updateLayouts]
+  );
 
   const handleCreateDashboard = () => {
     if (newDashboardName.trim()) {
@@ -824,25 +873,29 @@ export function CustomDashboardSection({
         </motion.div>
       ) : (
         <motion.div
+          ref={containerRef as React.RefObject<HTMLDivElement>}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
         >
-          <AnimatePresence mode="popLayout">
+          <ResponsiveGridLayout
+            className="layout"
+            width={containerWidth}
+            layouts={layouts}
+            breakpoints={{ lg: 1200, md: 996, sm: 768 }}
+            cols={{ lg: 12, md: 8, sm: 4 }}
+            rowHeight={60}
+            dragConfig={{ enabled: isEditing, handle: '.drag-handle', bounded: false, threshold: 3 }}
+            resizeConfig={{ enabled: isEditing }}
+            onLayoutChange={handleLayoutChange}
+            margin={[16, 16]}
+          >
             {activeDashboard.widgets.map((widget) => {
               // Render filter widgets with SavedFilterCard
               if (widget.type === 'filter') {
                 const widgetQuery = widget.config.query || createEmptyGroup();
                 const widgetFilteredData = executeQuery(data, widgetQuery);
                 return (
-                  <motion.div
-                    key={widget.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="col-span-full"
-                  >
+                  <div key={widget.id} className="h-full">
                     <SavedFilterCard
                       widget={widget}
                       filteredData={widgetFilteredData}
@@ -851,23 +904,24 @@ export function CustomDashboardSection({
                       onRemove={() => removeWidget(activeDashboard.id, widget.id)}
                       isEditing={isEditing}
                     />
-                  </motion.div>
+                  </div>
                 );
               }
 
               // Render other widgets normally
               return (
-                <DashboardWidgetRenderer
-                  key={widget.id}
-                  widget={widget}
-                  data={filteredData}
-                  stats={filteredStats}
-                  isEditing={isEditing}
-                  onRemove={() => removeWidget(activeDashboard.id, widget.id)}
-                />
+                <div key={widget.id} className="h-full">
+                  <DashboardWidgetRenderer
+                    widget={widget}
+                    data={filteredData}
+                    stats={filteredStats}
+                    isEditing={isEditing}
+                    onRemove={() => removeWidget(activeDashboard.id, widget.id)}
+                  />
+                </div>
               );
             })}
-          </AnimatePresence>
+          </ResponsiveGridLayout>
         </motion.div>
       )}
 
