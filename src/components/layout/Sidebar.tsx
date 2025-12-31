@@ -17,6 +17,7 @@ import {
   Trash2,
   LayoutGrid,
   Plus,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ const navItems: { icon: typeof LayoutDashboard; label: string; section: NavSecti
   { icon: LayoutDashboard, label: 'Dashboard', section: 'dashboard' },
   { icon: Building2, label: 'Organization', section: 'organization' },
   { icon: Users, label: 'Personnel', section: 'personnel' },
+  { icon: Calendar, label: 'Duty', section: 'duty' },
   { icon: Shield, label: 'Security', section: 'security' },
   { icon: Activity, label: 'Readiness', section: 'readiness' },
   { icon: BookOpen, label: 'Training', section: 'training' },

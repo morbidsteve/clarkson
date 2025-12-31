@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type NavSection = 'dashboard' | 'personnel' | 'security' | 'readiness' | 'training' | 'medical' | 'organization' | 'custom-dashboards';
+export type NavSection = 'dashboard' | 'personnel' | 'security' | 'readiness' | 'training' | 'medical' | 'organization' | 'duty' | 'custom-dashboards';
 
 interface NavigationStore {
   activeSection: NavSection;

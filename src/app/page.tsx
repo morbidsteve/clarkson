@@ -26,6 +26,7 @@ import { ReadinessSection } from '@/components/sections/ReadinessSection';
 import { TrainingSection } from '@/components/sections/TrainingSection';
 import { MedicalSection } from '@/components/sections/MedicalSection';
 import { CustomDashboardSection } from '@/components/sections/CustomDashboardSection';
+import { DutySection } from '@/components/sections/DutySection';
 
 // Personnel Section Components
 import { StatsCards } from '@/components/dashboard/StatsCards';
@@ -133,6 +134,12 @@ export default function Home() {
         return <OrganizationSection data={mergedData} stats={mergedStats} isLoading={isLoading} />;
       case 'personnel':
         return <PersonnelSection />;
+      case 'duty':
+        return (
+          <div className="p-6">
+            <DutySection />
+          </div>
+        );
       case 'security':
         return <SecuritySection data={mergedData} stats={mergedStats} isLoading={isLoading} />;
       case 'readiness':
