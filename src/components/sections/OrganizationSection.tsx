@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { RankInsignia } from '@/components/org/RankInsignia';
 import { OrgTreeView } from '@/components/org/OrgTreeView';
-import { CLR1_UNIT_HIERARCHY, getCLR1ChildUnits } from '@/lib/clr1-data';
+import { CLR1_UNIT_HIERARCHY, getCLR1ChildUnits, generateCLR1Personnel } from '@/lib/clr1-data';
 import type { UnitHierarchy } from '@/lib/mock-data';
 import type { Personnel, PersonnelStats } from '@/types/personnel';
 import { useSelectionStore } from '@/lib/stores/selection-store';
@@ -49,17 +49,18 @@ export function OrganizationSection({ data, stats, isLoading }: OrganizationSect
   const [viewMode, setViewMode] = useState<'drill-down' | 'tree'>('drill-down');
   const { openPersonnelDetail } = useSelectionStore();
 
-  // Get unit personnel map
+  // Get unit personnel map from CLR-1 generated personnel
   const unitPersonnelMap = useMemo(() => {
     const map: Record<string, Personnel[]> = {};
-    data.forEach(person => {
+    const clr1Personnel = generateCLR1Personnel();
+    clr1Personnel.forEach(person => {
       if (!map[person.unit]) {
         map[person.unit] = [];
       }
       map[person.unit].push(person);
     });
     return map;
-  }, [data]);
+  }, []);
 
   // Calculate total personnel in unit and sub-units
   const getUnitTotalPersonnel = (unitId: string): number => {

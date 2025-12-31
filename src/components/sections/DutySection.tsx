@@ -193,9 +193,9 @@ function DutyAnalysis() {
   const { selectedYear, selectedMonth, analysisScenario, setAnalysisScenario, getFairnessAnalysis } =
     useDutyStore();
 
-  // Get analysis for 6 months
+  // Get analysis for current month
   const analysis = useMemo(
-    () => getFairnessAnalysis(selectedYear, 6, analysisScenario),
+    () => getFairnessAnalysis(selectedYear, 1, analysisScenario),
     [selectedYear, selectedMonth, analysisScenario, getFairnessAnalysis]
   );
 
@@ -283,7 +283,7 @@ function DutyAnalysis() {
               Duty Per Capita by Unit
             </CardTitle>
             <CardDescription>
-              Average duty days per eligible member (last 6 months)
+              Average duty days per eligible member (current month)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -377,8 +377,7 @@ function DutyAnalysis() {
               </h4>
               <p className="text-sm text-muted-foreground">
                 With CLR-1 (24 Staff NCO + 11 CGO = 35 eligible) and CLB-1 (48 Staff NCO + 19 CGO = 67 eligible),
-                the combined pool of 102 eligible personnel shares regimental duty evenly, with an average of
-                approximately 3 duty days per person over 6 months.
+                the combined pool of 102 eligible personnel shares regimental duty evenly each month.
               </p>
             </div>
 
