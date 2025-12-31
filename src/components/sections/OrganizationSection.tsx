@@ -20,7 +20,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { RankInsignia } from '@/components/org/RankInsignia';
 import { OrgTreeView } from '@/components/org/OrgTreeView';
-import { UNIT_HIERARCHY, getChildUnits, type UnitHierarchy } from '@/lib/mock-data';
+import { CLR1_UNIT_HIERARCHY, getCLR1ChildUnits } from '@/lib/clr1-data';
+import type { UnitHierarchy } from '@/lib/mock-data';
 import type { Personnel, PersonnelStats } from '@/types/personnel';
 import { useSelectionStore } from '@/lib/stores/selection-store';
 
@@ -62,10 +63,10 @@ export function OrganizationSection({ data, stats, isLoading }: OrganizationSect
 
   // Calculate total personnel in unit and sub-units
   const getUnitTotalPersonnel = (unitId: string): number => {
-    const unit = UNIT_HIERARCHY.find(u => u.id === unitId);
+    const unit = CLR1_UNIT_HIERARCHY.find(u => u.id === unitId);
     if (!unit) return 0;
     let total = (unitPersonnelMap[unit.name] || []).length;
-    const children = getChildUnits(unitId);
+    const children = getCLR1ChildUnits(unitId);
     children.forEach(child => {
       total += getUnitTotalPersonnel(child.id);
     });
@@ -75,15 +76,15 @@ export function OrganizationSection({ data, stats, isLoading }: OrganizationSect
   // Get current view units
   const currentUnits = useMemo(() => {
     if (!selectedUnitId) {
-      return UNIT_HIERARCHY.filter(u => u.parentId === null);
+      return CLR1_UNIT_HIERARCHY.filter(u => u.parentId === null);
     }
-    return getChildUnits(selectedUnitId);
+    return getCLR1ChildUnits(selectedUnitId);
   }, [selectedUnitId]);
 
   // Get selected unit
   const selectedUnit = useMemo(() => {
     if (!selectedUnitId) return null;
-    return UNIT_HIERARCHY.find(u => u.id === selectedUnitId) || null;
+    return CLR1_UNIT_HIERARCHY.find(u => u.id === selectedUnitId) || null;
   }, [selectedUnitId]);
 
   // Get personnel for selected unit
@@ -131,7 +132,7 @@ export function OrganizationSection({ data, stats, isLoading }: OrganizationSect
   // Unit node component
   const UnitNode = ({ unit, index, isCenter = false }: { unit: UnitHierarchy; index: number; isCenter?: boolean }) => {
     const style = UNIT_STYLES[unit.type] || UNIT_STYLES['Team'];
-    const children = getChildUnits(unit.id);
+    const children = getCLR1ChildUnits(unit.id);
     const hasChildren = children.length > 0;
     const totalPersonnel = getUnitTotalPersonnel(unit.id);
     const directPersonnel = (unitPersonnelMap[unit.name] || []).length;
@@ -245,7 +246,7 @@ export function OrganizationSection({ data, stats, isLoading }: OrganizationSect
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Organization Chart</h1>
             <p className="text-muted-foreground">
-              {selectedUnit ? `Viewing: ${selectedUnit.name}` : 'Marine Corps Force Structure'}
+              {selectedUnit ? `Viewing: ${selectedUnit.name}` : 'Combat Logistics Regiment 1'}
             </p>
           </div>
 
@@ -293,10 +294,10 @@ export function OrganizationSection({ data, stats, isLoading }: OrganizationSect
         {viewMode === 'drill-down' && viewHistory.length > 0 && (
           <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
             <button onClick={goToTop} className="hover:text-primary transition-colors">
-              USMC
+              CLR-1
             </button>
             {viewHistory.map((id, idx) => {
-              const unit = UNIT_HIERARCHY.find(u => u.id === id);
+              const unit = CLR1_UNIT_HIERARCHY.find(u => u.id === id);
               return (
                 <span key={id} className="flex items-center gap-2">
                   <ChevronRight className="h-3 w-3" />

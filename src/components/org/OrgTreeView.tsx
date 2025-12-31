@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { RankInsignia } from '@/components/org/RankInsignia';
-import { UNIT_HIERARCHY, getChildUnits, type UnitHierarchy, type StaffPosition } from '@/lib/mock-data';
+import { CLR1_UNIT_HIERARCHY, getCLR1ChildUnits } from '@/lib/clr1-data';
+import type { UnitHierarchy, StaffPosition } from '@/lib/mock-data';
 import type { Personnel } from '@/types/personnel';
 
 interface OrgTreeViewProps {
@@ -95,7 +96,7 @@ function TreeNode({
   toggleNode: (id: string) => void;
 }) {
   const isOpen = expandedNodes.has(unit.id);
-  const children = useMemo(() => getChildUnits(unit.id), [unit.id]);
+  const children = useMemo(() => getCLR1ChildUnits(unit.id), [unit.id]);
   const hasChildren = children.length > 0;
   const style = UNIT_STYLES[unit.type] || UNIT_STYLES['Team'];
   const unitPersonnel = unitPersonnelMap[unit.name] || [];
@@ -235,9 +236,9 @@ export function OrgTreeView({ data, unitPersonnelMap, onPersonnelClick }: OrgTre
   // Track expanded nodes
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
-  // Get top-level units (MEFs)
+  // Get top-level units (CLR-1)
   const topLevelUnits = useMemo(() => {
-    return UNIT_HIERARCHY.filter(u => u.parentId === null);
+    return CLR1_UNIT_HIERARCHY.filter(u => u.parentId === null);
   }, []);
 
   // Toggle a single node
@@ -255,7 +256,7 @@ export function OrgTreeView({ data, unitPersonnelMap, onPersonnelClick }: OrgTre
 
   // Expand all nodes
   const expandAll = useCallback(() => {
-    const allIds = new Set(UNIT_HIERARCHY.map(u => u.id));
+    const allIds = new Set(CLR1_UNIT_HIERARCHY.map(u => u.id));
     setExpandedNodes(allIds);
   }, []);
 
@@ -266,12 +267,12 @@ export function OrgTreeView({ data, unitPersonnelMap, onPersonnelClick }: OrgTre
 
   // Expand to a specific level
   const expandToLevel = useCallback((targetType: string) => {
-    const levelOrder = ['MEF', 'Division', 'Regiment', 'Battalion', 'Company', 'Platoon', 'Squad', 'Team'];
+    const levelOrder = ['Regiment', 'Battalion', 'Company', 'Platoon', 'Squad', 'Team'];
     const targetIndex = levelOrder.indexOf(targetType);
     if (targetIndex === -1) return;
 
     const nodesToExpand = new Set<string>();
-    UNIT_HIERARCHY.forEach(unit => {
+    CLR1_UNIT_HIERARCHY.forEach(unit => {
       const unitIndex = levelOrder.indexOf(unit.type);
       if (unitIndex < targetIndex) {
         nodesToExpand.add(unit.id);
@@ -285,14 +286,6 @@ export function OrgTreeView({ data, unitPersonnelMap, onPersonnelClick }: OrgTre
       {/* Toolbar */}
       <div className="flex items-center gap-2 p-3 border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
         <span className="text-xs text-muted-foreground mr-2">Expand to:</span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => expandToLevel('Division')}
-          className="text-xs h-7"
-        >
-          Division
-        </Button>
         <Button
           variant="outline"
           size="sm"

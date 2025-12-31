@@ -2,6 +2,7 @@
 // Separate file for duty scheduling functionality
 
 import { faker } from '@faker-js/faker';
+import type { UnitHierarchy, StaffPosition } from './mock-data';
 import type {
   Personnel, Branch, ActiveStatus, ClearanceLevel, ReadinessStatus, ProfileStatus,
   WeaponsQualification, MaritalStatus, Gender, BloodType, Vaccination, Certification,
@@ -787,4 +788,288 @@ export function analyzeDutyFairness(
     minDutyPerCapita: min,
     variance: Math.sqrt(variance),
   };
+}
+
+// ============================================
+// CLR-1 ORGANIZATION HIERARCHY
+// ============================================
+
+// Generate staff positions for a unit type
+function generateCLR1StaffPositions(unitType: string): StaffPosition[] {
+  const templates: Record<string, Omit<StaffPosition, 'name'>[]> = {
+    'Regiment': [
+      { title: 'Commanding Officer', abbreviation: 'CO', rank: 'Colonel', payGrade: 'O-6' },
+      { title: 'Executive Officer', abbreviation: 'XO', rank: 'Lieutenant Colonel', payGrade: 'O-5' },
+      { title: 'Sergeant Major', abbreviation: 'SgtMaj', rank: 'Sergeant Major', payGrade: 'E-9' },
+      { title: 'Personnel Officer', abbreviation: 'S-1', rank: 'Major', payGrade: 'O-4' },
+      { title: 'Intelligence Officer', abbreviation: 'S-2', rank: 'Major', payGrade: 'O-4' },
+      { title: 'Operations Officer', abbreviation: 'S-3', rank: 'Major', payGrade: 'O-4' },
+      { title: 'Logistics Officer', abbreviation: 'S-4', rank: 'Major', payGrade: 'O-4' },
+    ],
+    'Battalion': [
+      { title: 'Commanding Officer', abbreviation: 'CO', rank: 'Lieutenant Colonel', payGrade: 'O-5' },
+      { title: 'Executive Officer', abbreviation: 'XO', rank: 'Major', payGrade: 'O-4' },
+      { title: 'Sergeant Major', abbreviation: 'SgtMaj', rank: 'Sergeant Major', payGrade: 'E-9' },
+      { title: 'Personnel Officer', abbreviation: 'S-1', rank: 'Captain', payGrade: 'O-3' },
+      { title: 'Intelligence Officer', abbreviation: 'S-2', rank: 'Captain', payGrade: 'O-3' },
+      { title: 'Operations Officer', abbreviation: 'S-3', rank: 'Captain', payGrade: 'O-3' },
+      { title: 'Logistics Officer', abbreviation: 'S-4', rank: 'Captain', payGrade: 'O-3' },
+    ],
+    'Company': [
+      { title: 'Commanding Officer', abbreviation: 'CO', rank: 'Captain', payGrade: 'O-3' },
+      { title: 'Executive Officer', abbreviation: 'XO', rank: 'First Lieutenant', payGrade: 'O-2' },
+      { title: 'First Sergeant', abbreviation: '1stSgt', rank: 'First Sergeant', payGrade: 'E-8' },
+      { title: 'Company Gunnery Sergeant', abbreviation: 'GySgt', rank: 'Gunnery Sergeant', payGrade: 'E-7' },
+    ],
+    'Platoon': [
+      { title: 'Platoon Commander', abbreviation: 'PltCmdr', rank: 'First Lieutenant', payGrade: 'O-2' },
+      { title: 'Platoon Sergeant', abbreviation: 'PltSgt', rank: 'Staff Sergeant', payGrade: 'E-6' },
+    ],
+  };
+
+  return (templates[unitType] || []).map(template => ({
+    ...template,
+    name: `${faker.person.firstName()} ${faker.person.lastName()}`,
+  }));
+}
+
+// CLR-1 Unit Hierarchy (compatible with OrganizationSection)
+export const CLR1_UNIT_HIERARCHY: UnitHierarchy[] = [
+  // Regiment level
+  {
+    id: 'clr1-reg',
+    name: 'Combat Logistics Regiment 1',
+    type: 'Regiment',
+    commander: 'Col James Mitchell',
+    commanderRank: 'Colonel',
+    parentId: null,
+    personnelCount: 1338, // Total CLR-1 + all subordinate units
+    location: 'Camp Pendleton, CA',
+    mission: 'Provide combat logistics support to I Marine Expeditionary Force',
+    staffPositions: generateCLR1StaffPositions('Regiment'),
+  },
+  // CLB-1 Battalion
+  {
+    id: 'clb1-bn',
+    name: 'Combat Logistics Battalion 1',
+    type: 'Battalion',
+    commander: 'LtCol Sarah Chen',
+    commanderRank: 'Lieutenant Colonel',
+    parentId: 'clr1-reg',
+    personnelCount: 274,
+    location: 'Camp Pendleton, CA',
+    mission: 'Provide direct support combat logistics to 1st Marine Division units',
+    staffPositions: generateCLR1StaffPositions('Battalion'),
+  },
+  // CLB-5 Battalion
+  {
+    id: 'clb5-bn',
+    name: 'Combat Logistics Battalion 5',
+    type: 'Battalion',
+    commander: 'LtCol Michael Rodriguez',
+    commanderRank: 'Lieutenant Colonel',
+    parentId: 'clr1-reg',
+    personnelCount: 274,
+    location: 'Camp Pendleton, CA',
+    mission: 'Provide direct support combat logistics to 5th Marine Regiment',
+    staffPositions: generateCLR1StaffPositions('Battalion'),
+  },
+  // DSB Battalion
+  {
+    id: 'dsb-bn',
+    name: 'Distribution Battalion',
+    type: 'Battalion',
+    commander: 'LtCol David Thompson',
+    commanderRank: 'Lieutenant Colonel',
+    parentId: 'clr1-reg',
+    personnelCount: 734,
+    location: 'Camp Pendleton, CA',
+    mission: 'Provide distribution and transportation support across the regiment',
+    staffPositions: generateCLR1StaffPositions('Battalion'),
+  },
+
+  // CLR-1 Regimental Companies
+  {
+    id: 'clr1-hs',
+    name: 'H&S Company, CLR-1',
+    type: 'Company',
+    commander: 'Capt Robert Williams',
+    commanderRank: 'Captain',
+    parentId: 'clr1-reg',
+    personnelCount: 146,
+    location: 'Camp Pendleton, CA',
+    mission: 'Provide headquarters and service support to regiment',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+
+  // CLB-1 Companies
+  {
+    id: 'clb1-hs',
+    name: 'H&S Company, CLB-1',
+    type: 'Company',
+    commander: 'Capt Jennifer Adams',
+    commanderRank: 'Captain',
+    parentId: 'clb1-bn',
+    personnelCount: 68,
+    location: 'Camp Pendleton, CA',
+    mission: 'Provide headquarters and service support to battalion',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+  {
+    id: 'clb1-alpha',
+    name: 'Alpha Company, CLB-1',
+    type: 'Company',
+    commander: 'Capt Marcus Lee',
+    commanderRank: 'Captain',
+    parentId: 'clb1-bn',
+    personnelCount: 69,
+    location: 'Camp Pendleton, CA',
+    mission: 'Motor transport and maintenance support',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+  {
+    id: 'clb1-bravo',
+    name: 'Bravo Company, CLB-1',
+    type: 'Company',
+    commander: 'Capt Diana Ross',
+    commanderRank: 'Captain',
+    parentId: 'clb1-bn',
+    personnelCount: 69,
+    location: 'Camp Pendleton, CA',
+    mission: 'Supply and services support',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+  {
+    id: 'clb1-charlie',
+    name: 'Charlie Company, CLB-1',
+    type: 'Company',
+    commander: 'Capt Thomas Park',
+    commanderRank: 'Captain',
+    parentId: 'clb1-bn',
+    personnelCount: 68,
+    location: 'Camp Pendleton, CA',
+    mission: 'Engineering and utilities support',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+
+  // CLB-5 Companies
+  {
+    id: 'clb5-hs',
+    name: 'H&S Company, CLB-5',
+    type: 'Company',
+    commander: 'Capt Amanda White',
+    commanderRank: 'Captain',
+    parentId: 'clb5-bn',
+    personnelCount: 68,
+    location: 'Camp Pendleton, CA',
+    mission: 'Provide headquarters and service support to battalion',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+  {
+    id: 'clb5-alpha',
+    name: 'Alpha Company, CLB-5',
+    type: 'Company',
+    commander: 'Capt Steven Garcia',
+    commanderRank: 'Captain',
+    parentId: 'clb5-bn',
+    personnelCount: 69,
+    location: 'Camp Pendleton, CA',
+    mission: 'Motor transport and maintenance support',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+  {
+    id: 'clb5-bravo',
+    name: 'Bravo Company, CLB-5',
+    type: 'Company',
+    commander: 'Capt Lisa Kim',
+    commanderRank: 'Captain',
+    parentId: 'clb5-bn',
+    personnelCount: 69,
+    location: 'Camp Pendleton, CA',
+    mission: 'Supply and services support',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+  {
+    id: 'clb5-charlie',
+    name: 'Charlie Company, CLB-5',
+    type: 'Company',
+    commander: 'Capt Brian Martinez',
+    commanderRank: 'Captain',
+    parentId: 'clb5-bn',
+    personnelCount: 68,
+    location: 'Camp Pendleton, CA',
+    mission: 'Engineering and utilities support',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+
+  // DSB Companies
+  {
+    id: 'dsb-hs',
+    name: 'H&S Company, DSB',
+    type: 'Company',
+    commander: 'Capt Rachel Green',
+    commanderRank: 'Captain',
+    parentId: 'dsb-bn',
+    personnelCount: 147,
+    location: 'Camp Pendleton, CA',
+    mission: 'Provide headquarters and service support to battalion',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+  {
+    id: 'dsb-alpha',
+    name: 'Alpha Company, DSB',
+    type: 'Company',
+    commander: 'Capt Michael Brown',
+    commanderRank: 'Captain',
+    parentId: 'dsb-bn',
+    personnelCount: 147,
+    location: 'Camp Pendleton, CA',
+    mission: 'Heavy equipment transport',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+  {
+    id: 'dsb-bravo',
+    name: 'Bravo Company, DSB',
+    type: 'Company',
+    commander: 'Capt Christine Taylor',
+    commanderRank: 'Captain',
+    parentId: 'dsb-bn',
+    personnelCount: 147,
+    location: 'Camp Pendleton, CA',
+    mission: 'Bulk fuel distribution',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+  {
+    id: 'dsb-charlie',
+    name: 'Charlie Company, DSB',
+    type: 'Company',
+    commander: 'Capt Daniel Johnson',
+    commanderRank: 'Captain',
+    parentId: 'dsb-bn',
+    personnelCount: 147,
+    location: 'Camp Pendleton, CA',
+    mission: 'General supply distribution',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+  {
+    id: 'dsb-delta',
+    name: 'Delta Company, DSB',
+    type: 'Company',
+    commander: 'Capt Emily Davis',
+    commanderRank: 'Captain',
+    parentId: 'dsb-bn',
+    personnelCount: 146,
+    location: 'Camp Pendleton, CA',
+    mission: 'Landing support and embarkation',
+    staffPositions: generateCLR1StaffPositions('Company'),
+  },
+];
+
+// Helper functions for CLR-1 hierarchy
+export function getCLR1UnitById(id: string): UnitHierarchy | undefined {
+  return CLR1_UNIT_HIERARCHY.find(u => u.id === id);
+}
+
+export function getCLR1ChildUnits(parentId: string): UnitHierarchy[] {
+  return CLR1_UNIT_HIERARCHY.filter(u => u.parentId === parentId);
 }
